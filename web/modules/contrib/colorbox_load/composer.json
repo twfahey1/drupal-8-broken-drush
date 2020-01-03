@@ -1,0 +1,38 @@
+{
+  "name": "drupal/colorbox_load",
+  "description": "Allow you to load any content in a colorbox.",
+  "type": "drupal-module",
+  "homepage": "https://www.drupal.org/project/colorbox_load",
+  "authors": [
+    {
+      "name": "Ben Dougherty (benjy)",
+      "homepage": "https://www.drupal.org/u/benjy",
+      "role": "Maintainer"
+    },
+    {
+      "name": "Renato Gonçalves (RenatoG)",
+      "email": "renatog@ciandt.com",
+      "homepage": "https://www.drupal.org/u/RenatoG",
+      "role": "Maintainer"
+    },
+    {
+      "name": "Sam Becker (Sam152)",
+      "homepage": "https://www.drupal.org/u/sam152",
+      "role": "Maintainer"
+    },
+    {
+      "name": "Committers for colorbox_load",
+      "homepage": "https://www.drupal.org/node/2642446/committers"
+    }
+  ],
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/colorbox_load",
+    "source": "http://cgit.drupalcode.org/colorbox_load"
+  },
+  "license": "GPL-2.0+",
+  "minimum-stability": "dev",
+  "require": {
+    "drupal/colorbox": "~8.*",
+    "drupal/ng_lightbox": "~8.*"
+  }
+}
