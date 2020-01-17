@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# Rsync the files from the Pantheon instance to the local site.
+# Note this is dependent on the terminus rsync plugin:
+# https://github.com/pantheon-systems/terminus-rsync-plugin
+
+echo "Rsyncing files from ${PROJECT_NAME}.${PANTHEON_SITE_ENV}"
+dest="${PROJECT_ROOT}/sites/default"
+terminus rsync ${PROJECT_NAME}.${PANTHEON_SITE_ENV}:files ${dest}
