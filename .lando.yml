@@ -2,3 +2,8 @@ name: drupal-8-broken-drush
 recipe: drupal8
 config:
   webroot: web
+services:
+  appserver:
+    xdebug: true
+    config:
+      php: .vscode/php.ini
