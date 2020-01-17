@@ -1,0 +1,4 @@
+name: drupal-8-broken-drush
+recipe: drupal8
+config:
+  webroot: web
