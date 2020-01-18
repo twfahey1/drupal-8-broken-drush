@@ -2,9 +2,7 @@
 
 namespace Drush\Commands\generate\Helper;
 
-use Consolidation\SiteProcess\Util\Escape;
 use DrupalCodeGenerator\Helper\OutputHandler as BaseOutputHandler;
-use Drush\Drush;
 use Symfony\Component\Console\Output\OutputInterface;
 use Webmozart\PathUtil\Path;
 
@@ -28,12 +26,13 @@ class OutputHandler extends BaseOutputHandler
             $file = Path::join($directory, $file);
         }
 
-        if (defined('DRUPAL_ROOT') && $dumped_files) {
+        // @todo fix this.
+        if (false && defined('DRUPAL_ROOT') && $dumped_files) {
+            // @todo Below code is forking new process well but current process is not shutting down fully.
             $exec = drush_get_editor();
-            $exec = str_replace('%s', Escape::shellArg(Path::makeAbsolute($dumped_files[0], DRUPAL_ROOT)), $exec);
-            $process = Drush::shell($exec);
-            // Use start() in order to get an async fork.
-            $process->start();
+            $exec = str_replace('%s', drush_escapeshellarg(Path::makeAbsolute($dumped_files[0], DRUPAL_ROOT)), $exec);
+            $pipes = [];
+            proc_close(proc_open($exec . ' 2> ' . drush_bit_bucket() . ' &', [], $pipes));
         }
         parent::printSummary($output, $dumped_files);
     }

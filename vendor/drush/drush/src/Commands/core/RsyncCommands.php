@@ -2,13 +2,12 @@
 namespace Drush\Commands\core;
 
 use Consolidation\AnnotatedCommand\CommandData;
-use Consolidation\SiteProcess\ProcessBase;
 use Drush\Commands\DrushCommands;
 use Drush\Drush;
 use Drush\Exceptions\UserAbortException;
-use Consolidation\SiteAlias\HostPath;
-use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
-use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
+use Drush\SiteAlias\HostPath;
+use Drush\SiteAlias\SiteAliasManagerAwareInterface;
+use Drush\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Backend\BackendPathEvaluator;
 use Drush\Config\ConfigLocator;
 use Symfony\Component\Console\Event\ConsoleCommandEvent;
@@ -60,9 +59,9 @@ class RsyncCommands extends DrushCommands implements SiteAliasManagerAwareInterf
     public function rsync($source, $target, array $extra, $options = ['exclude-paths' => self::REQ, 'include-paths' => self::REQ, 'mode' => 'akz'])
     {
         // Prompt for confirmation. This is destructive.
-        if (!$this->getConfig()->simulate()) {
-            $replacements = ['!source' => $this->sourceEvaluatedPath->fullyQualifiedPathPreservingTrailingSlash(), '!target' => $this->targetEvaluatedPath->fullyQualifiedPath()];
-            if (!$this->io()->confirm(dt("Replace files in !target with !source?", $replacements))) {
+        if (!\Drush\Drush::simulate()) {
+            $this->output()->writeln(dt("You will delete files in !target and replace with data from !source", ['!source' => $this->sourceEvaluatedPath->fullyQualifiedPathPreservingTrailingSlash(), '!target' => $this->targetEvaluatedPath->fullyQualifiedPath()]));
+            if (!$this->io()->confirm(dt('Do you want to continue?'))) {
                 throw new UserAbortException();
             }
         }
@@ -72,12 +71,11 @@ class RsyncCommands extends DrushCommands implements SiteAliasManagerAwareInterf
         $parameters[] = $this->sourceEvaluatedPath->fullyQualifiedPathPreservingTrailingSlash();
         $parameters[] = $this->targetEvaluatedPath->fullyQualifiedPath();
 
-        $ssh_options = $this->getConfig()->get('ssh.options', '');
+        $ssh_options = Drush::config()->get('ssh.options', '');
         $exec = "rsync -e 'ssh $ssh_options'". ' '. implode(' ', array_filter($parameters));
-        $process = $this->processManager()->shell($exec);
-        $process->run($process->showRealtime());
+        $exec_result = drush_op_system($exec);
 
-        if ($process->isSuccessful()) {
+        if ($exec_result == 0) {
             drush_backend_set_result($this->targetEvaluatedPath->fullyQualifiedPath());
         } else {
             throw new \Exception(dt("Could not rsync from !source to !dest", ['!source' => $this->sourceEvaluatedPath->fullyQualifiedPathPreservingTrailingSlash(), '!dest' => $this->targetEvaluatedPath->fullyQualifiedPath()]));
@@ -139,7 +137,7 @@ class RsyncCommands extends DrushCommands implements SiteAliasManagerAwareInterf
         $evaluatedPath = HostPath::create($manager, $aliasName);
         $this->pathEvaluator->evaluate($evaluatedPath);
 
-        $aliasRecord = $evaluatedPath->getSiteAlias();
+        $aliasRecord = $evaluatedPath->getAliasRecord();
 
         // If the path is remote, then we will also inject the global
         // options into the alias config context so that we pick up

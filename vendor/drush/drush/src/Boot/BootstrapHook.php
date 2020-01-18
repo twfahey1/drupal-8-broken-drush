@@ -23,13 +23,12 @@ class BootstrapHook implements InitializeHookInterface
     public function initialize(InputInterface $input, AnnotationData $annotationData)
     {
         // Get the @bootstrap annotation. If there isn't one, then assume NONE.
-        $phase_long = $annotationData->get('bootstrap', 'none');
-        $phase = current(explode(' ', $phase_long));
+        $phase = $annotationData->get('bootstrap', 'none');
         $bootstrap_successful = $this->bootstrapManager->bootstrapToPhase($phase, $annotationData);
 
         if (!$bootstrap_successful) {
             // TODO: better exception class, better exception method
-            throw new \Exception('Bootstrap failed. Run your command with -vvv for more information.');
+            throw new \Exception('Bootstrap failed.');
         }
     }
 }

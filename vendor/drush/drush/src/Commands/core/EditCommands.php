@@ -1,11 +1,10 @@
 <?php
 namespace Drush\Commands\core;
 
-use Consolidation\SiteProcess\Util\Escape;
 use Drush\Commands\DrushCommands;
 use Drush\Drush;
-use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
-use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
+use Drush\SiteAlias\SiteAliasManagerAwareInterface;
+use Drush\SiteAlias\SiteAliasManagerAwareTrait;
 
 class EditCommands extends DrushCommands implements SiteAliasManagerAwareInterface
 {
@@ -45,7 +44,7 @@ class EditCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
             }
         }
 
-        $editor = drush_get_editor();
+        $exec = drush_get_editor();
         if (count($all) == 1) {
             $filepath = current($all);
         } else {
@@ -56,12 +55,7 @@ class EditCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
                 $filepath = substr($filepath, 0, $pos);
             }
         }
-
-        // A bit awkward due to backward compat.
-        $cmd = sprintf($editor, Escape::shellArg($filepath));
-        $process = $this->processManager()->shell($cmd);
-        $process->setTty(true);
-        $process->mustRun();
+        return drush_shell_exec_interactive($exec, $filepath, $filepath);
     }
 
     public function load($headers = true)
@@ -81,7 +75,7 @@ class EditCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
             }
         }
 
-        if ($rcs = $this->getConfig()->configPaths()) {
+        if ($rcs = Drush::config()->get('runtime.config.paths')) {
             // @todo filter out any files that are within Drush.
             $rcs = array_combine($rcs, $rcs);
             if ($headers) {
@@ -135,7 +129,7 @@ class EditCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     public static function bashFiles()
     {
         $bashFiles = [];
-        $home = $this->getConfig()->home();
+        $home = Drush::config()->home();
         if ($bashrc = self::findBashrc($home)) {
             $bashFiles[$bashrc] = $bashrc;
         }

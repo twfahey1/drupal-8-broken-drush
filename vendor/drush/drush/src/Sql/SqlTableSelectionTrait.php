@@ -1,6 +1,7 @@
 <?php
 namespace Drush\Sql;
 
+use Consolidation\Config\ConfigInterface;
 use Drush\Utils\StringUtils;
 
 /**
@@ -12,28 +13,29 @@ trait SqlTableSelectionTrait
 {
 
     /**
-     * Given a list of all tables, expand the convert the wildcards in the
-     * option-provided lists into a list of actual table names.
+     * Get a list of all table names and expand input that may contain
+     * wildcards (`*`) if necessary so that the array returned only contains valid
+     * table names i.e. actual tables that exist, without a wildcard.
      *
      * @param array $options An options array as passed to an Annotated Command.
-     * @param array $all_tables A list of all eligible tables.
      *
      * @return array
      *   An array of tables with each table name in the appropriate
      *   element of the array.
      */
-    public function getExpandedTableSelection($options, $all_tables)
+    public function getExpandedTableSelection($options)
     {
         $table_selection = $this->getTableSelection($options);
         // Get the existing table names in the specified database.
+        $db_tables = $this->listTables();
         if (isset($table_selection['skip'])) {
-            $table_selection['skip'] = $this->expandAndFilterTables($table_selection['skip'], $all_tables);
+            $table_selection['skip'] = $this->expandAndFilterTables($table_selection['skip'], $db_tables);
         }
         if (isset($table_selection['structure'])) {
-            $table_selection['structure'] = $this->expandAndFilterTables($table_selection['structure'], $all_tables);
+            $table_selection['structure'] = $this->expandAndFilterTables($table_selection['structure'], $db_tables);
         }
         if (isset($table_selection['tables'])) {
-            $table_selection['tables'] = $this->expandAndFilterTables($table_selection['tables'], $all_tables);
+            $table_selection['tables'] = $this->expandAndFilterTables($table_selection['tables'], $db_tables);
         }
         return $table_selection;
     }

@@ -126,7 +126,7 @@ class RequestException extends TransferException
     {
         $body = $response->getBody();
 
-        if (!$body->isSeekable() || !$body->isReadable()) {
+        if (!$body->isSeekable()) {
             return null;
         }
 

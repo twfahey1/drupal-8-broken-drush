@@ -1,8 +1,11 @@
 <?php
 namespace Drush\Commands\core;
 
+use Consolidation\AnnotatedCommand\AnnotationData;
 use Consolidation\AnnotatedCommand\CommandData;
 use Drush\Commands\DrushCommands;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputOption;
 
 class DrupliconCommands extends DrushCommands
 {

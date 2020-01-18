@@ -97,8 +97,8 @@ class ViewsCommands extends DrushCommands
             // Convert boolean values into a string to print.
             if (is_bool($value)) {
                 $value = $value ? 'TRUE' : 'FALSE';
-            } elseif (is_string($value)) {
-                // Wrap string values in quotes.
+            } // Wrap string values in quotes.
+            elseif (is_string($value)) {
                 $value = "\"$value\"";
             }
             $this->logger()->success(dt('!setting set to !value', [
@@ -140,7 +140,6 @@ class ViewsCommands extends DrushCommands
      * @aliases vl,views-list
      * @validate-module-enabled views
      *
-     * @filter-default-field machine-name
      * @return \Consolidation\OutputFormatters\StructuredData\RowsOfFields
      */
     public function vlist($options = ['name' => self::REQ, 'tags' => self::REQ, 'status' => self::REQ, 'format' => 'table'])
@@ -248,7 +247,7 @@ class ViewsCommands extends DrushCommands
             return null;
         } elseif ($options['count']) {
             drush_backend_set_result(count($view->result));
-            $this->io()->writeln(count($view->result));
+            drush_print(count($view->result));
             return null;
         } else {
             // Don't show admin links in markup by default.

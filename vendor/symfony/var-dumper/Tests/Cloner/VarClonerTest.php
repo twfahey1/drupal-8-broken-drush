@@ -412,8 +412,6 @@ Symfony\Component\VarDumper\Cloner\Data Object
                             [position] => 1
                             [attr] => Array
                                 (
-                                    [file] => %a%eVarClonerTest.php
-                                    [line] => 21
                                 )
 
                         )
@@ -466,8 +464,6 @@ Symfony\Component\VarDumper\Cloner\Data Object
                             [position] => 1
                             [attr] => Array
                                 (
-                                    [file] => %s
-                                    [line] => 5
                                 )
 
                         )

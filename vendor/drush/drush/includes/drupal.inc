@@ -12,8 +12,6 @@ use Drush\Drush;
  * if any. Returns FALSE if there is no current Drupal installation,
  * or it is somehow broken.
  *
- * @deprecated See \Drush\Boot\Boot::getVersion.
- *
  * @return
  *   A string containing the version number of the current
  *   Drupal installation, if any. Otherwise, return FALSE.
@@ -22,7 +20,7 @@ function drush_drupal_version($drupal_root = NULL) {
   static $version = FALSE;
 
   if (!$version) {
-    if (($drupal_root != NULL) || ($drupal_root = Drush::bootstrapManager()->getRoot())) {
+    if (($drupal_root != NULL) || ($drupal_root = drush_get_context('DRUSH_DRUPAL_ROOT'))) {
       $bootstrap = Drush::bootstrapManager()->bootstrapObjectForRoot($drupal_root);
       if ($bootstrap) {
         $version = $bootstrap->getVersion($drupal_root);
@@ -32,12 +30,8 @@ function drush_drupal_version($drupal_root = NULL) {
   return $version;
 }
 
-/**
- * @deprecated @see Drush::drush()
- */
 function drush_drupal_cache_clear_all() {
-    $process = Drush::drush(Drush::aliasManager()->getSelf(), 'cache-rebuild');
-    $process->mustrun();
+  drush_invoke_process('@self', 'cache-rebuild');
 }
 
 /**

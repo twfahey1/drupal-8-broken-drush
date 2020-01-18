@@ -2,6 +2,8 @@
 namespace Drush\Drupal\Commands\sql;
 
 use Consolidation\AnnotatedCommand\CommandData;
+use Drupal\Component\Utility\Random;
+use Drupal\Core\Database\Database;
 use Drush\Commands\DrushCommands;
 use Symfony\Component\Console\Input\InputInterface;
 
@@ -52,7 +54,7 @@ class SanitizeUserFieldsCommands extends DrushCommands implements SanitizePlugin
         $conn = $this->getDatabase();
         $field_definitions = $this->getEntityManager()->getFieldDefinitions('user', 'user');
         $field_storage = $this->getEntityManager()->getFieldStorageDefinitions('user');
-        foreach (explode(',', $options['whitelist-fields']) as $key) {
+        foreach (explode(',', $options['whitelist-fields']) as $key => $def) {
             unset($field_definitions[$key], $field_storage[$key]);
         }
 

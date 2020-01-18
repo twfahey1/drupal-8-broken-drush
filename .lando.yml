@@ -7,3 +7,18 @@ services:
     xdebug: true
     config:
       php: .vscode/php.ini
+  vscode:
+    type: compose
+    services:
+      image: codercom/code-server
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/London
+        - PASSWORD=password #optional
+        - SUDO_PASSWORD=password #optional
+      volumes:
+        - '.'
+      ports:
+        - 8080:8443
+      restart: unless-stopped

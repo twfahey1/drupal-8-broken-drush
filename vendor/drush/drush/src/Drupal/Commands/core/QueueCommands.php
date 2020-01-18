@@ -5,6 +5,7 @@ use Consolidation\AnnotatedCommand\CommandData;
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\OutputFormatters\StructuredData\RowsOfFields;
 use Drupal\Core\Queue\QueueFactory;
+use Drupal\Core\Queue\QueueInterface;
 use Drupal\Core\Queue\QueueWorkerManagerInterface;
 use Drupal\Core\Queue\RequeueException;
 use Drupal\Core\Queue\SuspendQueueException;
@@ -78,7 +79,7 @@ class QueueCommands extends DrushCommands
                 $queue->releaseItem($item);
             } catch (SuspendQueueException $e) {
                 // If the worker indicates there is a problem with the whole queue,
-                // release the item.
+                // release the item and skip to the next queue.
                 $queue->releaseItem($item);
                 throw new \Exception($e->getMessage());
             }
@@ -97,7 +98,6 @@ class QueueCommands extends DrushCommands
      *   items: Items
      *   class: Class
      *
-     * @filter-default-field queue
      * @return \Consolidation\OutputFormatters\StructuredData\RowsOfFields
      */
     public function qList($options = ['format' => 'table'])

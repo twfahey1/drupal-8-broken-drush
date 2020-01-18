@@ -17,9 +17,7 @@ use Drupal\Core\Extension\ThemeHandlerInterface;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\StringTranslation\TranslationInterface;
 use Drush\Commands\DrushCommands;
-use Drush\Exceptions\UserAbortException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Webmozart\PathUtil\Path;
 
 class ConfigImportCommands extends DrushCommands
 {
@@ -162,14 +160,10 @@ class ConfigImportCommands extends DrushCommands
     public function import($label = null, $options = ['preview' => 'list', 'source' => self::REQ, 'partial' => false, 'diff' => false])
     {
         // Determine source directory.
-
-        $source_storage_dir = ConfigCommands::getDirectory($label, $options['source']);
-
-        // Prepare the configuration storage for the import.
-        if ($source_storage_dir == Path::canonicalize(\config_get_config_directory(CONFIG_SYNC_DIRECTORY))) {
-            $source_storage = $this->getConfigStorageSync();
+        if ($target = $options['source']) {
+            $source_storage = new FileStorage($target);
         } else {
-            $source_storage = new FileStorage($source_storage_dir);
+            $source_storage = $this->getConfigStorageSync();
         }
 
         // Determine $source_storage in partial case.
@@ -202,13 +196,12 @@ class ConfigImportCommands extends DrushCommands
         } else {
             $output = ConfigCommands::getDiff($active_storage, $source_storage, $this->output());
 
-            $this->output()->writeln($output);
+            $this->output()->writeln(implode("\n", $output));
         }
 
-        if (!$this->io()->confirm(dt('Import the listed configuration changes?'))) {
-            throw new UserAbortException();
+        if ($this->io()->confirm(dt('Import the listed configuration changes?'))) {
+            return drush_op([$this, 'doImport'], $storage_comparer);
         }
-        return drush_op([$this, 'doImport'], $storage_comparer);
     }
 
     // Copied from submitForm() at /core/modules/config/src/Form/ConfigSync.php

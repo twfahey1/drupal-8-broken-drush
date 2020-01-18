@@ -20,8 +20,6 @@ use Drupal\Core\Logger\LogMessageParserInterface;
 use Drupal\Core\Logger\RfcLoggerTrait;
 use Drupal\Core\Logger\RfcLogLevel;
 use Psr\Log\LoggerInterface;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 
 /**
  * Redirects Drupal logging messages to Drush log.
@@ -31,9 +29,9 @@ use Psr\Log\LoggerAwareTrait;
  * Doing this arguably violates the Psr\Log contract,
  * but we can't help that here -- we just need to convert back.
  */
-class DrushLog implements LoggerInterface, LoggerAwareInterface
+class DrushLog implements LoggerInterface
 {
-    use LoggerAwareTrait;
+
     use RfcLoggerTrait;
 
     /**
@@ -42,6 +40,11 @@ class DrushLog implements LoggerInterface, LoggerAwareInterface
      * @var \Drupal\Core\Logger\LogMessageParserInterface
      */
     protected $parser;
+
+    /**
+     * The logger that messages will be passed through to.
+     */
+    protected $logger;
 
     /**
      * Constructs a DrushLog object.

@@ -2,9 +2,9 @@
 namespace Drush\Commands\core;
 
 use Consolidation\AnnotatedCommand\CommandData;
-use Consolidation\SiteProcess\Util\Escape;
 use Drush\Commands\DrushCommands;
 use Drush\Drush;
+use Symfony\Component\Config\Definition\Exception\Exception;
 use Webmozart\PathUtil\Path;
 
 class NotifyCommands extends DrushCommands
@@ -33,8 +33,8 @@ class NotifyCommands extends DrushCommands
             return;
         }
 
-        if ($this->getConfig()->get('notify.duration')) {
-            if (self::isAllowed()) {
+        if (Drush::config()->get('notify.duration')) {
+            if (self::isAllowed($commandData)) {
                 $msg = dt("Command '!command' completed.", ['!command' => $cmd]);
                 self::shutdownSend($msg, $commandData);
             }
@@ -88,12 +88,8 @@ class NotifyCommands extends DrushCommands
             }
         }
 
-        // Keep backward compat and prepare a string here.
-        $cmd = sprintf($cmd, Escape::shellArg($msg));
-        $process = Drush::shell($cmd);
-        $process->run();
-        if (!$process->isSuccessful()) {
-            Drush::logger()->warning($error_message);
+        if (!drush_shell_exec($cmd, $msg)) {
+            throw new \Exception($error_message . ' ' . dt('Or you may specify an alternate command to run by setting notify:cmd in a drush.yml file'));
         }
 
         return true;
@@ -102,9 +98,13 @@ class NotifyCommands extends DrushCommands
     /**
      * Identify if the given Drush request should trigger a notification.
      *
-     * @return bool
+     * @param $command
+     *   Name of the command.
+     *
+     * @return
+     *   Boolean
      */
-    public static function isAllowed()
+    public static function isAllowed(CommandData $commandData)
     {
         $duration = Drush::config()->get('notify.duration');
         $execution = time() - $_SERVER['REQUEST_TIME'];

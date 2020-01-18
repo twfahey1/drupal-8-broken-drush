@@ -6,6 +6,8 @@ namespace Drush\Commands;
  *   Set up local Drush configuration.
  */
 
+use Drush\Log\LogLevel;
+use Consolidation\AnnotatedCommand\AnnotationData;
 use Consolidation\OutputFormatters\StructuredData\RowsOfFields;
 use Consolidation\OutputFormatters\Options\FormatterOptions;
 

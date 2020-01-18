@@ -38,7 +38,6 @@ abstract class AbstractCloner implements ClonerInterface
         'ReflectionMethod' => ['Symfony\Component\VarDumper\Caster\ReflectionCaster', 'castMethod'],
         'ReflectionParameter' => ['Symfony\Component\VarDumper\Caster\ReflectionCaster', 'castParameter'],
         'ReflectionProperty' => ['Symfony\Component\VarDumper\Caster\ReflectionCaster', 'castProperty'],
-        'ReflectionReference' => ['Symfony\Component\VarDumper\Caster\ReflectionCaster', 'castReference'],
         'ReflectionExtension' => ['Symfony\Component\VarDumper\Caster\ReflectionCaster', 'castExtension'],
         'ReflectionZendExtension' => ['Symfony\Component\VarDumper\Caster\ReflectionCaster', 'castZendExtension'],
 
@@ -70,24 +69,18 @@ abstract class AbstractCloner implements ClonerInterface
         'DOMProcessingInstruction' => ['Symfony\Component\VarDumper\Caster\DOMCaster', 'castProcessingInstruction'],
         'DOMXPath' => ['Symfony\Component\VarDumper\Caster\DOMCaster', 'castXPath'],
 
-        'XMLReader' => ['Symfony\Component\VarDumper\Caster\XmlReaderCaster', 'castXmlReader'],
+        'XmlReader' => ['Symfony\Component\VarDumper\Caster\XmlReaderCaster', 'castXmlReader'],
 
         'ErrorException' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castErrorException'],
         'Exception' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castException'],
         'Error' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castError'],
         'Symfony\Component\DependencyInjection\ContainerInterface' => ['Symfony\Component\VarDumper\Caster\StubCaster', 'cutInternals'],
-        'Symfony\Component\HttpClient\CurlHttpClient' => ['Symfony\Component\VarDumper\Caster\SymfonyCaster', 'castHttpClient'],
-        'Symfony\Component\HttpClient\NativeHttpClient' => ['Symfony\Component\VarDumper\Caster\SymfonyCaster', 'castHttpClient'],
-        'Symfony\Component\HttpClient\Response\CurlResponse' => ['Symfony\Component\VarDumper\Caster\SymfonyCaster', 'castHttpClient'],
-        'Symfony\Component\HttpClient\Response\NativeResponse' => ['Symfony\Component\VarDumper\Caster\SymfonyCaster', 'castHttpClient'],
         'Symfony\Component\HttpFoundation\Request' => ['Symfony\Component\VarDumper\Caster\SymfonyCaster', 'castRequest'],
         'Symfony\Component\VarDumper\Exception\ThrowingCasterException' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castThrowingCasterException'],
         'Symfony\Component\VarDumper\Caster\TraceStub' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castTraceStub'],
         'Symfony\Component\VarDumper\Caster\FrameStub' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castFrameStub'],
-        'Symfony\Component\VarDumper\Cloner\AbstractCloner' => ['Symfony\Component\VarDumper\Caster\StubCaster', 'cutInternals'],
         'Symfony\Component\Debug\Exception\SilencedErrorContext' => ['Symfony\Component\VarDumper\Caster\ExceptionCaster', 'castSilencedErrorContext'],
 
-        'ProxyManager\Proxy\ProxyInterface' => ['Symfony\Component\VarDumper\Caster\ProxyManagerCaster', 'castProxy'],
         'PHPUnit_Framework_MockObject_MockObject' => ['Symfony\Component\VarDumper\Caster\StubCaster', 'cutInternals'],
         'PHPUnit\Framework\MockObject\MockObject' => ['Symfony\Component\VarDumper\Caster\StubCaster', 'cutInternals'],
         'PHPUnit\Framework\MockObject\Stub' => ['Symfony\Component\VarDumper\Caster\StubCaster', 'cutInternals'],
@@ -113,31 +106,16 @@ abstract class AbstractCloner implements ClonerInterface
         'SplObjectStorage' => ['Symfony\Component\VarDumper\Caster\SplCaster', 'castObjectStorage'],
         'SplPriorityQueue' => ['Symfony\Component\VarDumper\Caster\SplCaster', 'castHeap'],
         'OuterIterator' => ['Symfony\Component\VarDumper\Caster\SplCaster', 'castOuterIterator'],
-        'WeakReference' => ['Symfony\Component\VarDumper\Caster\SplCaster', 'castWeakReference'],
+
+        'MongoCursorInterface' => ['Symfony\Component\VarDumper\Caster\MongoCaster', 'castCursor'],
 
         'Redis' => ['Symfony\Component\VarDumper\Caster\RedisCaster', 'castRedis'],
         'RedisArray' => ['Symfony\Component\VarDumper\Caster\RedisCaster', 'castRedisArray'],
-        'RedisCluster' => ['Symfony\Component\VarDumper\Caster\RedisCaster', 'castRedisCluster'],
 
         'DateTimeInterface' => ['Symfony\Component\VarDumper\Caster\DateCaster', 'castDateTime'],
         'DateInterval' => ['Symfony\Component\VarDumper\Caster\DateCaster', 'castInterval'],
         'DateTimeZone' => ['Symfony\Component\VarDumper\Caster\DateCaster', 'castTimeZone'],
         'DatePeriod' => ['Symfony\Component\VarDumper\Caster\DateCaster', 'castPeriod'],
-
-        'GMP' => ['Symfony\Component\VarDumper\Caster\GmpCaster', 'castGmp'],
-
-        'MessageFormatter' => ['Symfony\Component\VarDumper\Caster\IntlCaster', 'castMessageFormatter'],
-        'NumberFormatter' => ['Symfony\Component\VarDumper\Caster\IntlCaster', 'castNumberFormatter'],
-        'IntlTimeZone' => ['Symfony\Component\VarDumper\Caster\IntlCaster', 'castIntlTimeZone'],
-        'IntlCalendar' => ['Symfony\Component\VarDumper\Caster\IntlCaster', 'castIntlCalendar'],
-        'IntlDateFormatter' => ['Symfony\Component\VarDumper\Caster\IntlCaster', 'castIntlDateFormatter'],
-
-        'Memcached' => ['Symfony\Component\VarDumper\Caster\MemcachedCaster', 'castMemcached'],
-
-        'Ds\Collection' => ['Symfony\Component\VarDumper\Caster\DsCaster', 'castCollection'],
-        'Ds\Map' => ['Symfony\Component\VarDumper\Caster\DsCaster', 'castMap'],
-        'Ds\Pair' => ['Symfony\Component\VarDumper\Caster\DsCaster', 'castPair'],
-        'Symfony\Component\VarDumper\Caster\DsPairStub' => ['Symfony\Component\VarDumper\Caster\DsCaster', 'castPairStub'],
 
         ':curl' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castCurl'],
         ':dba' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castDba'],
@@ -150,7 +128,6 @@ abstract class AbstractCloner implements ClonerInterface
         ':pgsql result' => ['Symfony\Component\VarDumper\Caster\PgSqlCaster', 'castResult'],
         ':process' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castProcess'],
         ':stream' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castStream'],
-        ':OpenSSL X.509' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castOpensslX509'],
         ':persistent stream' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castStream'],
         ':stream-context' => ['Symfony\Component\VarDumper\Caster\ResourceCaster', 'castStreamContext'],
         ':xml' => ['Symfony\Component\VarDumper\Caster\XmlResourceCaster', 'castXml'],
@@ -159,6 +136,7 @@ abstract class AbstractCloner implements ClonerInterface
     protected $maxItems = 2500;
     protected $maxString = -1;
     protected $minDepth = 1;
+    protected $useExt;
 
     private $casters = [];
     private $prevErrorHandler;
@@ -176,6 +154,7 @@ abstract class AbstractCloner implements ClonerInterface
             $casters = static::$defaultCasters;
         }
         $this->addCasters($casters);
+        $this->useExt = \extension_loaded('symfony_debug');
     }
 
     /**
@@ -191,7 +170,7 @@ abstract class AbstractCloner implements ClonerInterface
     public function addCasters(array $casters)
     {
         foreach ($casters as $type => $callback) {
-            $this->casters[$type][] = $callback;
+            $this->casters[strtolower($type)][] = \is_string($callback) && false !== strpos($callback, '::') ? explode('::', $callback, 2) : $callback;
         }
     }
 
@@ -243,7 +222,7 @@ abstract class AbstractCloner implements ClonerInterface
             }
 
             if ($this->prevErrorHandler) {
-                return ($this->prevErrorHandler)($type, $msg, $file, $line, $context);
+                return \call_user_func($this->prevErrorHandler, $type, $msg, $file, $line, $context);
             }
 
             return false;
@@ -290,32 +269,25 @@ abstract class AbstractCloner implements ClonerInterface
             $stub->class = get_parent_class($class).'@anonymous';
         }
         if (isset($this->classInfo[$class])) {
-            list($i, $parents, $hasDebugInfo, $fileInfo) = $this->classInfo[$class];
+            list($i, $parents, $hasDebugInfo) = $this->classInfo[$class];
         } else {
             $i = 2;
-            $parents = [$class];
+            $parents = [strtolower($class)];
             $hasDebugInfo = method_exists($class, '__debugInfo');
 
             foreach (class_parents($class) as $p) {
-                $parents[] = $p;
+                $parents[] = strtolower($p);
                 ++$i;
             }
             foreach (class_implements($class) as $p) {
-                $parents[] = $p;
+                $parents[] = strtolower($p);
                 ++$i;
             }
             $parents[] = '*';
 
-            $r = new \ReflectionClass($class);
-            $fileInfo = $r->isInternal() || $r->isSubclassOf(Stub::class) ? [] : [
-                'file' => $r->getFileName(),
-                'line' => $r->getStartLine(),
-            ];
-
-            $this->classInfo[$class] = [$i, $parents, $hasDebugInfo, $fileInfo];
+            $this->classInfo[$class] = [$i, $parents, $hasDebugInfo];
         }
 
-        $stub->attr += $fileInfo;
         $a = Caster::castObject($obj, $class, $hasDebugInfo);
 
         try {

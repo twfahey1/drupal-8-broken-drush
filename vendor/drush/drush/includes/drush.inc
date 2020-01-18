@@ -177,6 +177,10 @@ function drush_get_global_options($brief = FALSE) {
  * (e.g. unlink() and other file system functions) so that can be suppressed
  * if the simulation mode is enabled.
  *
+ * Important:  Call @see drush_op_system() to execute a shell command,
+ * or @see drush_shell_exec() to execute a shell command and capture the
+ * shell output.
+ *
  * @param $callable
  *   The name of the function. Any additional arguments are passed along.
  * @return
@@ -188,7 +192,7 @@ function drush_op($callable) {
   $args = func_get_args();
   array_shift($args); // Skip function name
   foreach ($args as $arg) {
-    $args_printed[] = is_scalar($arg) ? $arg : (is_object($arg) ? get_class($arg) : gettype($arg));
+    $args_printed[] = is_scalar($arg) ? $arg : (is_array($arg) ? 'Array' : 'Object');
   }
 
   if (!is_array($callable)) {
@@ -203,8 +207,13 @@ function drush_op($callable) {
     }
   }
 
+  // Special checking for drush_op('system')
+  if ($callable == 'system') {
+    drush_log(dt("Do not call drush_op('system'); use drush_op_system instead"), LogLevel::DEBUG);
+  }
+
   if (\Drush\Drush::verbose() || \Drush\Drush::simulate()) {
-    Drush::logger()->debug('Calling {method}({args})', ['method' => $callable_string, 'args' => implode(", ", $args_printed)]);
+    drush_log(sprintf("Calling %s(%s)", $callable_string, implode(", ", $args_printed)), LogLevel::DEBUG);
   }
 
   if (\Drush\Drush::simulate()) {
@@ -247,17 +256,16 @@ function drush_call_user_func_array($function, $args = []) {
  *
  * If mime type can't be obtained, an error will be set.
  *
- * @return string|bool
+ * @return mixed
  *   The MIME content type of the file or FALSE.
  */
 function drush_mime_content_type($filename) {
   $content_type = drush_attempt_mime_content_type($filename);
   if ($content_type) {
-    Drush::logger()->info(dt('Mime type for !file is !mt', ['!file' => $filename, '!mt' => $content_type]));
+    drush_log(dt('Mime type for !file is !mt', ['!file' => $filename, '!mt' => $content_type]), LogLevel::INFO);
     return $content_type;
   }
-  Drush::logger()->error(dt('Unable to determine mime type for !file.', ['!file' => $filename]));
-  return false;
+  return drush_set_error('MIME_CONTENT_TYPE_UNKNOWN', dt('Unable to determine mime type for !file.', ['!file' => $filename]));
 }
 
 /**
@@ -270,7 +278,7 @@ function drush_attempt_mime_content_type($filename) {
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $content_type = $finfo->file($filename);
     if ($content_type == 'application/octet-stream') {
-      Drush::logger()->debug(dt('Mime type for !file is application/octet-stream.', ['!file' => $filename]));
+      drush_log(dt('Mime type for !file is application/octet-stream.', ['!file' => $filename]), LogLevel::DEBUG);
       $content_type = FALSE;
     }
   }
@@ -279,7 +287,7 @@ function drush_attempt_mime_content_type($filename) {
   // archives as octet-stream for other reasons) we'll detect mime types on our
   //  own by examing the file's magic header bytes.
   if (!$content_type) {
-    Drush::logger()->debug(dt('Examining !file headers.', ['!file' => $filename]));
+    drush_log(dt('Examining !file headers.', ['!file' => $filename]), LogLevel::DEBUG);
     if ($file = fopen($filename, 'rb')) {
       $first = fread($file, 2);
       fclose($file);
@@ -307,23 +315,23 @@ function drush_attempt_mime_content_type($filename) {
             break;
 
           default:
-            Drush::logger()->debug(dt('Unable to determine mime type from header bytes 0x!hex of !file.', ['!hex' => dechex($data[1]), '!file' => $filename,]));
+            drush_log(dt('Unable to determine mime type from header bytes 0x!hex of !file.', ['!hex' => dechex($data[1]), '!file' => $filename,]), LogLevel::DEBUG);
         }
       }
       else {
-        Drush::logger()->warning(dt('Unable to read !file.', ['!file' => $filename]));
+        drush_log(dt('Unable to read !file.', ['!file' => $filename]), LogLevel::WARNING);
       }
     }
     else {
-      Drush::logger()->warning(dt('Unable to open !file.', ['!file' => $filename]));
+      drush_log(dt('Unable to open !file.', ['!file' => $filename]), LogLevel::WARNING);
     }
   }
 
   // 3. Lastly if above methods didn't work, try to guess the mime type from
-  // the file extension. This is useful if the file has no identifiable magic
+  // the file extension. This is useful if the file has no identificable magic
   // header bytes (for example tarballs).
   if (!$content_type) {
-    Drush::logger()->debug(dt('Examining !file extension.', ['!file' => $filename]));
+    drush_log(dt('Examining !file extension.', ['!file' => $filename]), LogLevel::DEBUG);
 
     // Remove querystring from the filename, if present.
     $filename = basename(current(explode('?', $filename, 2)));
@@ -493,8 +501,6 @@ function drush_backend_packet_log($entry, $backend_options) {
  *
  * @return
  *   Entire log history
- *
- * @deprecated
  */
 function drush_get_log() {
   return drush_get_context('DRUSH_LOG', []);
@@ -504,7 +510,57 @@ function drush_get_log() {
  * Run print_r on a variable and log the output.
  */
 function dlm($object) {
-  Drush::logger()->notice(print_r($object, TRUE));
+  drush_log(print_r($object, TRUE));
+}
+
+/**
+ * Turn drupal_set_message() errors into drush_log errors
+ */
+function _drush_log_drupal_messages() {
+  if (function_exists('drupal_get_messages')) {
+
+    $messages = drupal_get_messages(NULL, TRUE);
+
+    if (array_key_exists('error', $messages)) {
+      //Drupal message errors.
+      foreach ((array) $messages['error'] as $error) {
+        $error = strip_tags($error);
+        $header = preg_match('/^warning: Cannot modify header information - headers already sent by /i', $error);
+        $session = preg_match('/^warning: session_start\(\): Cannot send session /i', $error);
+        if ($header || $session) {
+          //These are special cases for an unavoidable warnings
+          //that are generated by generating output before Drupal is bootstrapped.
+          //or sending a session cookie (seems to affect d7 only?)
+          //Simply ignore them.
+          continue;
+        }
+        elseif (preg_match('/^warning:/i', $error)) {
+          drush_log(preg_replace('/^warning: /i', '', $error), LogLevel::WARNING);
+        }
+        elseif (preg_match('/^notice:/i', $error)) {
+          // Drush LogLevel::NOTICE is printed all the time; we map
+          // watchdog notices to LogLevel::INFO, which are only
+          // printed in verbose mode.
+          drush_log(preg_replace('/^notice: /i', '', $error), LogLevel::INFO);
+        }
+        elseif (preg_match('/^user warning:/i', $error)) {
+          // This is a special case. PHP logs sql errors as 'User Warnings', not errors.
+          drush_set_error('DRUSH_DRUPAL_ERROR_MESSAGE', preg_replace('/^user warning: /i', '', $error));
+        }
+        else {
+          drush_set_error('DRUSH_DRUPAL_ERROR_MESSAGE', $error);
+        }
+      }
+    }
+    unset($messages['error']);
+
+    // Log non-error messages.
+    foreach ($messages as $type => $items) {
+      foreach ($items as $item) {
+        drush_log(strip_tags($item), $type);
+      }
+    }
+  }
 }
 
 // Copy of format_size() in Drupal.
@@ -600,8 +656,6 @@ function drush_set_error($error, $message = null, $output_label = "") {
  *
  * @return
  *   The current aggregate error status
- *
- * @deprecated
  */
 function drush_get_error() {
   return drush_get_context('DRUSH_ERROR_CODE', DRUSH_SUCCESS);
@@ -612,8 +666,6 @@ function drush_get_error() {
  *
  * @return
  *   An associative array of error messages indexed by the type of message.
- *
- * @deprecated
  */
 function drush_get_error_log() {
   return drush_get_context('DRUSH_ERROR_LOG', []);

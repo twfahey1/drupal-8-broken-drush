@@ -117,7 +117,9 @@ class Data implements \ArrayAccess, \Countable, \IteratorAggregate
             throw new \LogicException(sprintf('%s object holds non-iterable type "%s".', self::class, \gettype($value)));
         }
 
-        yield from $value;
+        foreach ($value as $k => $v) {
+            yield $k => $v;
+        }
     }
 
     public function __get($key)
@@ -165,6 +167,18 @@ class Data implements \ArrayAccess, \Countable, \IteratorAggregate
         }
 
         return sprintf('%s (count=%d)', $this->getType(), \count($value));
+    }
+
+    /**
+     * @return array The raw data structure
+     *
+     * @deprecated since version 3.3. Use array or object access instead.
+     */
+    public function getRawData()
+    {
+        @trigger_error(sprintf('The "%s()" method is deprecated since Symfony 3.3 and will be removed in 4.0. Use the array or object access instead.', __METHOD__));
+
+        return $this->data;
     }
 
     /**

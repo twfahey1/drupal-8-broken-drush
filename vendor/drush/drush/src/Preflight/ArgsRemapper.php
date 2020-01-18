@@ -2,7 +2,7 @@
 namespace Drush\Preflight;
 
 /**
- * Map commandline arguments from one value to another during preflight.
+ * Map commandline arguments from one value to anohter during preflight.
  */
 class ArgsRemapper
 {
@@ -27,9 +27,9 @@ class ArgsRemapper
     public function remap($argv)
     {
         $result = [];
-        $sawCommand = false;
+        $sawCommmand = false;
         foreach ($argv as $arg) {
-            $arg = $this->checkRemap($arg, $sawCommand);
+            $arg = $this->checkRemap($arg, $sawCommmand);
             if (isset($arg)) {
                 $result[] = $arg;
             }
@@ -41,13 +41,12 @@ class ArgsRemapper
      * Check to see if the provided single arg needs to be remapped. If
      * it does, then the remapping is performed.
      *
-     * @param string $arg One argument to inspect
-     * @param string $sawCommand True if drush command was found
+     * @param stinrg $arg One arguent to inspect
      * @return string The altered argument
      */
-    protected function checkRemap($arg, &$sawCommand)
+    protected function checkRemap($arg, &$sawCommmand)
     {
-        if (!$sawCommand && ctype_alpha($arg[0])) {
+        if (!$sawCommmand && ctype_alpha($arg[0])) {
             $sawCommand = true;
             return $this->remapCommandAlias($arg);
         }

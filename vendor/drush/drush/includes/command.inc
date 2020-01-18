@@ -6,7 +6,7 @@ use Drush\Log\LogLevel;
 use Webmozart\PathUtil\Path;
 use Consolidation\AnnotatedCommand\AnnotationData;
 use Drush\Command\DrushInputAdapter;
-use Consolidation\SiteAlias\SiteAlias;
+use Drush\SiteAlias\AliasRecord;
 use Consolidation\AnnotatedCommand\CommandData;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -64,12 +64,10 @@ use Symfony\Component\Console\Output\ConsoleOutput;
  *   @see drush_backend_get_result()
  *
  * Do not change the signature of this function!  drush_invoke_process
- * was one of the key Drush APIs.  See http://drupal.org/node/1152908
- *
- * @deprecated See Drush::drush().
+ * is one of the key Drush APIs.  See http://drupal.org/node/1152908
  */
 function drush_invoke_process($site_alias_record, $command_name, $commandline_args = [], $commandline_options = [], $backend_options = TRUE) {
-  if ($site_alias_record instanceof SiteAlias) {
+  if ($site_alias_record instanceof AliasRecord) {
     $site_alias_record = $site_alias_record->legacyRecord();
   }
 

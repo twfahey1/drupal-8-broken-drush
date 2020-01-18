@@ -4,7 +4,6 @@ namespace Drush\Boot;
 
 use Drush\Drupal\DrupalKernel as DrushDrupalKernel;
 use Drush\Drupal\UpdateKernel as DrushUpdateKernel;
-use Drush\Drupal\InstallerKernel as DrushInstallerKernel;
 
 /**
  * Defines the available kernels that can be bootstrapped.
@@ -27,13 +26,6 @@ final class Kernels
     const UPDATE = 'update';
 
     /**
-     * The kernel that is used during site installation.
-     *
-     * @var string
-     */
-    const INSTALLER = 'installer';
-
-    /**
      * Returns the available kernels.
      */
     public static function availableKernels()
@@ -41,7 +33,6 @@ final class Kernels
         return [
             static::DRUPAL,
             static::UPDATE,
-            static::INSTALLER,
         ];
     }
 
@@ -59,7 +50,6 @@ final class Kernels
         $factories = [
             Kernels::DRUPAL => [DrushDrupalKernel::class, 'createFromRequest'],
             Kernels::UPDATE => [DrushUpdateKernel::class, 'createFromRequest'],
-            Kernels::INSTALLER => [DrushInstallerKernel::class, 'createFromRequest'],
         ];
         return $factories[$kernel];
     }

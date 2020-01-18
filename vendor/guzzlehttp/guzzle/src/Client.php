@@ -210,7 +210,7 @@ class Client implements ClientInterface
      *
      * @return array
      */
-    private function prepareDefaults(array $options)
+    private function prepareDefaults($options)
     {
         $defaults = $this->config;
 

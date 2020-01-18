@@ -18,7 +18,7 @@ $this->output()->writeln(print_r($extra, true));
 // there is a bootstrapped site.
 //
 $self = Drush::aliasManager()->getSelf();;
-if (!$self->hasRoot()) {
+if (empty($self->root())) {
   $this->output()->writeln('No bootstrapped site.');
 }
 else {

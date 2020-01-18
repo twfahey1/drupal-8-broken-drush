@@ -2,9 +2,9 @@
 namespace Drush\Drupal\Commands\sql;
 
 use Consolidation\AnnotatedCommand\CommandData;
+use Drupal\Core\Database\Database;
 use Drush\Commands\DrushCommands;
 use Drush\Sql\SqlBase;
-use Drush\Utils\StringUtils;
 use Symfony\Component\Console\Input\InputInterface;
 
 /**
@@ -39,13 +39,8 @@ class SanitizeUserTableCommands extends DrushCommands implements SanitizePluginI
 
         // Sanitize passwords.
         if ($this->isEnabled($options['sanitize-password'])) {
-            $password = $options['sanitize-password'];
-            if (is_null($password)) {
-                $password = StringUtils::generatePassword();
-            }
-
             // Mimic Drupal's /scripts/password-hash.sh
-            $hash = $this->passwordHasher->hash($password);
+            $hash = $this->passwordHasher->hash($options['sanitize-password']);
             $query->fields(['pass' => $hash]);
             $messages[] = dt('User passwords sanitized.');
         }
@@ -88,11 +83,10 @@ class SanitizeUserTableCommands extends DrushCommands implements SanitizePluginI
      * @option sanitize-email The pattern for test email addresses in the
      *   sanitization operation, or "no" to keep email addresses unchanged. May
      *   contain replacement patterns %uid, %mail or %name.
-     * @option sanitize-password
-     *   By default, passwords are randomized. Specify 'no' to disable that. Specify any other value to set all passwords
-     *   to that value.
+     * @option sanitize-password The password to assign to all accounts in the
+     *   sanitization operation, or "no" to keep passwords unchanged.
      */
-    public function options($options = ['sanitize-email' => 'user+%uid@localhost.localdomain', 'sanitize-password' => null])
+    public function options($options = ['sanitize-email' => 'user+%uid@localhost.localdomain', 'sanitize-password' => 'password'])
     {
     }
 

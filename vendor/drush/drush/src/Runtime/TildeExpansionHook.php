@@ -5,7 +5,7 @@ namespace Drush\Runtime;
 use Consolidation\AnnotatedCommand\CommandData;
 use Consolidation\AnnotatedCommand\Hooks\ValidatorInterface;
 use Drush\Utils\StringUtils;
-use Drush\Config\ConfigAwareTrait;
+use Robo\Common\ConfigAwareTrait;
 use Robo\Contract\ConfigAwareInterface;
 
 /**

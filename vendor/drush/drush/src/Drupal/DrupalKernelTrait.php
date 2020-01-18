@@ -24,7 +24,7 @@ trait DrupalKernelTrait
      */
     public function addServiceModifier(ServiceModifierInterface $serviceModifier)
     {
-        Drush::logger()->debug((dt("Add service modifier")));
+        drush_log(dt("Add service modifier"), LogLevel::DEBUG);
         $this->serviceModifiers[] = $serviceModifier;
     }
 
@@ -33,7 +33,7 @@ trait DrupalKernelTrait
      */
     protected function getContainerBuilder()
     {
-        Drush::logger()->debug(dt("Get container builder"));
+        drush_log(dt("Get container builder"), LogLevel::DEBUG);
         $container = parent::getContainerBuilder();
         foreach ($this->serviceModifiers as $serviceModifier) {
             $serviceModifier->alter($container);
@@ -145,7 +145,7 @@ trait DrupalKernelTrait
         if (!file_exists($result)) {
             return;
         }
-        Drush::logger()->debug(dt("!module should have an extra.drush.services section in its composer.json. See http://docs.drush.org/en/master/commands/#specifying-the-services-file.", ['!module' => $module]));
+        drush_log(dt("!module should have an extra.drush.services section in its composer.json. See http://docs.drush.org/en/master/commands/#specifying-the-services-file.", ['!module' => $module]), LogLevel::DEBUG);
         return $result;
     }
 
@@ -174,7 +174,7 @@ trait DrupalKernelTrait
         $composerJsonContents = file_get_contents($composerJsonPath);
         $info = json_decode($composerJsonContents, true);
         if (!$info) {
-            Drush::logger()->warning(dt('Invalid json in {composer}', ['composer' => $composerJsonPath]));
+            drush_log(dt('Invalid json in {composer}', ['composer' => $composerJsonPath]), LogLevel::WARNING);
             return false;
         }
         if (!isset($info['extra']['drush']['services'])) {
@@ -189,11 +189,11 @@ trait DrupalKernelTrait
         foreach ($services as $serviceYmlPath => $versionConstraint) {
             $version = preg_replace('#-dev.*#', '', $version);
             if (Semver::satisfies($version, $versionConstraint)) {
-                Drush::logger()->debug(dt('Found {services} for {module} Drush commands', ['module' => $module, 'services' => $serviceYmlPath]));
+                drush_log(dt('Found {services} for {module} Drush commands', ['module' => $module, 'services' => $serviceYmlPath]), LogLevel::DEBUG);
                 return $dir . '/' . $serviceYmlPath;
             }
         }
-        Drush::logger()->debug(dt('{module} has Drush commands, but none of {constraints} match the current Drush version "{version}"', ['module' => $module, 'constraints' => implode(',', $services), 'version' => $version]));
+        drush_log(dt('{module} has Drush commands, but none of {constraints} match the current Drush version "{version}"', ['module' => $module, 'constraints' => implode(',', $services), 'version' => $version]), LogLevel::DEBUG);
         return false;
     }
 

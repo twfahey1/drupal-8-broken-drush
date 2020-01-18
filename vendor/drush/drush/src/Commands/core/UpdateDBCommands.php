@@ -2,32 +2,26 @@
 namespace Drush\Commands\core;
 
 use Consolidation\Log\ConsoleLogLevel;
-use DrushBatchContext;
 use Consolidation\OutputFormatters\StructuredData\RowsOfFields;
-use Consolidation\OutputFormatters\StructuredData\UnstructuredListData;
-use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
-use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
+use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\Core\Utility\Error;
 use Drupal\Core\Entity\EntityStorageException;
 use Drush\Commands\DrushCommands;
 use Drush\Drush;
 use Drush\Exceptions\UserAbortException;
 use Psr\Log\LogLevel;
+use Symfony\Component\Console\Output\OutputInterface;
 
-class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInterface
+class UpdateDBCommands extends DrushCommands
 {
-    use SiteAliasManagerAwareTrait;
-
     protected $cache_clear;
-
-    protected $maintenanceModeOriginalState;
 
     /**
      * Apply any database updates required (as with running update.php).
      *
      * @command updatedb
      * @option cache-clear Clear caches upon completion.
-     * @option entity-updates Run automatic entity schema updates at the end of any update hooks. Not supported in Drupal >= 8.7.0.
+     * @option entity-updates Run automatic entity schema updates at the end of any update hooks.
      * @option post-updates Run post updates after hook_update_n and entity updates.
      * @bootstrap full
      * @kernel update
@@ -40,11 +34,6 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
         require_once DRUPAL_ROOT . '/core/includes/update.inc';
         drupal_load_updates();
 
-        if ($options['entity-updates'] && version_compare(drush_drupal_version(), '8.7.0', '>=')) {
-            $this->logger()->warning(dt('Drupal removed its automatic entity-updates API in 8.7. See https://www.drupal.org/node/3034742.'));
-            $options['entity-updates'] = false;
-        }
-
         // Disables extensions that have a lower Drupal core major version, or too high of a PHP requirement.
         // Those are rare, and this function does a full rebuild. So commenting it out for now.
         // update_fix_compatibility();
@@ -56,34 +45,29 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
             }
         }
 
-        $status_options = [
-            // @see https://github.com/drush-ops/drush/pull/3855.
-            'no-entity-updates' => !$options['entity-updates'],
-            'no-post-updates' => !$options['post-updates'],
-        ];
-        $process = $this->processManager()->drush($this->siteAliasManager()->getSelf(), 'updatedb:status', [], $status_options);
-        $process->mustRun();
-        if ($output = $process->getOutput()) {
-            // We have pending updates - let's run em.
-            $this->output()->writeln($output);
+        $return = drush_invoke_process('@self', 'updatedb:status', [], ['entity-updates' => $options['entity-updates'], 'post-updates' => $options['post-updates']]);
+        if ($return['error_status']) {
+            throw new \Exception('Failed getting update status.');
+        } elseif (empty($return['object'])) {
+            // Do nothing. updatedb:status already logged a message.
+        } else {
             if (!$this->io()->confirm(dt('Do you wish to run the specified pending updates?'))) {
                 throw new UserAbortException();
             }
-            if ($this->getConfig()->simulate()) {
+            if (Drush::simulate()) {
                 $success = true;
             } else {
                 $success = $this->updateBatch($options);
                 // Caches were just cleared in updateFinished callback.
             }
 
+            if (!$success) {
+                drush_set_context('DRUSH_EXIT_CODE', DRUSH_FRAMEWORK_ERROR);
+            }
+
             $level = $success ? ConsoleLogLevel::SUCCESS : LogLevel::ERROR;
             $this->logger()->log($level, dt('Finished performing updates.'));
-        } else {
-            $this->logger()->success(dt('No pending updates.'));
-            $success = true;
         }
-
-        return $success ? self::EXIT_SUCCESS : self::EXIT_FAILURE;
     }
 
     /**
@@ -94,28 +78,19 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
      * @bootstrap full
      * @kernel update
      * @aliases entup,entity-updates
-     * @usage drush updatedb:status --entity-updates | grep entity-update
-     *   Use updatedb:status to detect pending updates.
      *
      */
     public function entityUpdates($options = ['cache-clear' => true])
     {
-        if ($this->getConfig()->simulate()) {
+        if (Drush::simulate()) {
             throw new \Exception(dt('entity-updates command does not support --simulate option.'));
-        }
-
-        // @todo - Do same check for updatedb as well.
-        if (version_compare(drush_drupal_version(), '8.7.0', '>=')) {
-            throw new \Exception(dt('Drupal removed its automatic entity-updates API in 8.7. See https://www.drupal.org/node/3034742.'));
         }
 
         if ($this->entityUpdatesMain() === false) {
             throw new \Exception('Entity updates not run.');
         }
 
-        if ($options['cache-clear']) {
-            drush_drupal_cache_clear_all();
-        }
+        drush_drupal_cache_clear_all();
 
         $this->logger()->success(dt('Finished performing updates.'));
     }
@@ -135,7 +110,6 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
      *   description: Description
      *   type: Type
      * @default-fields module,update_id,type,description
-     * @filter-default-field type
      * @return \Consolidation\OutputFormatters\StructuredData\RowsOfFields
      */
     public function updatedbStatus($options = ['format'=> 'table', 'entity-updates' => true, 'post-updates' => true])
@@ -158,13 +132,14 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
      * @bootstrap full
      * @kernel update
      * @hidden
-     *
-     * @return \Consolidation\OutputFormatters\StructuredData\UnstructuredListData
      */
-    public function process($batch_id, $options = ['format' => 'json'])
+    public function process($batch_id)
     {
-        $result = drush_batch_command($batch_id);
-        return new UnstructuredListData($result);
+        // Suppress the output of the batch process command. This is intended to
+        // be passed to the initiating command rather than being output to the
+        // console.
+        $this->output()->setVerbosity(OutputInterface::VERBOSITY_QUIET);
+        return drush_batch_command($batch_id);
     }
 
     /**
@@ -178,25 +153,16 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
      * aborted updates will continue to appear on update.php as updates that
      * have not yet been run.
      *
-     * This method is static since since it is called by _drush_batch_worker().
-     *
-     * @param string $module
+     * @param $module
      *   The module whose update will be run.
-     * @param int $number
+     * @param $number
      *   The update number to run.
-     * @param array $dependency_map
-     *   The update dependency map.
-     * @param DrushBatchContext $context
-     *   The batch context object.
+     * @param $context
+     *   The batch context array
      */
-    public static function updateDoOne($module, $number, array $dependency_map, DrushBatchContext $context)
+    public function updateDoOne($module, $number, $dependency_map, &$context)
     {
         $function = $module . '_update_' . $number;
-
-        // Disable config entity overrides.
-        if (!defined('MAINTENANCE_MODE')) {
-            define('MAINTENANCE_MODE', 'update');
-        }
 
         // If this update was aborted in a previous step, or has a dependency that
         // was aborted in a previous step, go no further.
@@ -215,21 +181,14 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
                     Database::startLog($function);
                 }
 
-                if (empty($context['results'][$module][$number]['type'])) {
-                    Drush::logger()->notice("Update started: $function");
-                }
-
+                $this->logger()->notice("Update started: $function");
                 $ret['results']['query'] = $function($context['sandbox']);
                 $ret['results']['success'] = true;
-                $ret['type'] = 'update';
-            } catch (\Throwable $e) {
-                // PHP 7 introduces Throwable, which covers both Error and Exception throwables.
+            } // @TODO We may want to do different error handling for different exception
+            // types, but for now we'll just print the message.
+            catch (\Exception $e) {
                 $ret['#abort'] = ['success' => false, 'query' => $e->getMessage()];
-                Drush::logger()->error($e->getMessage());
-            } catch (\Exception $e) {
-                // In order to be compatible with PHP 5 we also catch regular Exceptions.
-                $ret['#abort'] = ['success' => false, 'query' => $e->getMessage()];
-                Drush::logger()->error($e->getMessage());
+                $this->logger()->error($e->getMessage());
             }
 
             if ($context['log']) {
@@ -237,7 +196,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
             }
         } else {
             $ret['#abort'] = ['success' => false];
-            Drush::logger()->warning(dt('Update function @function not found', ['@function' => $function]));
+            $this->logger()->warning(dt('Update function @function not found', ['@function' => $function]));
         }
 
         if (isset($context['sandbox']['#finished'])) {
@@ -255,7 +214,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
 
         // Log the message that was returned.
         if (!empty($ret['results']['query'])) {
-            Drush::logger()->notice(strip_tags((string) $ret['results']['query']));
+            $this->logger()->notice(strip_tags((string) $ret['results']['query']));
         }
 
         if (!empty($ret['#abort'])) {
@@ -280,17 +239,12 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
      *
      * @param string $function
      *   The post-update function to execute.
-     * @param DrushBatchContext $context
-     *   The batch context object.
+     * @param array $context
+     *   The batch context.
      */
-    public static function updateDoOnePostUpdate($function, DrushBatchContext $context)
+    public function updateDoOnePostUpdate($function, &$context)
     {
         $ret = [];
-
-        // Disable config entity overrides.
-        if (!defined('MAINTENANCE_MODE')) {
-            define('MAINTENANCE_MODE', 'update');
-        }
 
         // If this update was aborted in a previous step, or has a dependency that was
         // aborted in a previous step, go no further.
@@ -301,13 +255,10 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
         list($module, $name) = explode('_post_update_', $function, 2);
         module_load_include('php', $module, $module . '.post_update');
         if (function_exists($function)) {
-            if (empty($context['results'][$module][$name]['type'])) {
-                Drush::logger()->notice("Update started: $function");
-            }
+            $this->logger()->notice("Update started: $function");
             try {
                 $ret['results']['query'] = $function($context['sandbox']);
                 $ret['results']['success'] = true;
-                $ret['type'] = 'post_update';
 
                 if (!isset($context['sandbox']['#finished']) || (isset($context['sandbox']['#finished']) && $context['sandbox']['#finished'] >= 1)) {
                     \Drupal::service('update.post_update_registry')->registerInvokedUpdates([$function]);
@@ -317,7 +268,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
                 // types, but for now we'll just log the exception and return the message
                 // for printing.
                 // @see https://www.drupal.org/node/2564311
-                Drush::logger()->error($e->getMessage());
+                $this->logger()->error($e->getMessage());
 
                 $variables = Error::decodeException($e);
                 unset($variables['backtrace']);
@@ -339,7 +290,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
 
         // Log the message that was returned.
         if (!empty($ret['results']['query'])) {
-            Drush::logger()->notice(strip_tags((string) $ret['results']['query']));
+            $this->logger()->notice(strip_tags((string) $ret['results']['query']));
         }
 
         if (!empty($ret['#abort'])) {
@@ -348,7 +299,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
             // Setting this value will output an error message.
             // @see \DrushBatchContext::offsetSet()
             $context['error_message'] = "Update failed: $function";
-        } elseif ($context['finished'] == 1 && empty($ret['#abort'])) {
+        } else {
             // Setting this value will output a success message.
             // @see \DrushBatchContext::offsetSet()
             $context['message'] = "Update completed: $function";
@@ -356,23 +307,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
     }
 
     /**
-     * Batch finished callback.
-     *
-     * @param boolean $success Whether the batch ended without a fatal error.
-     * @param array $results
-     * @param array $operations
-     */
-    public static function updateFinished($success, $results, $operations)
-    {
-        // No code needed but the batch result bookkeeping fails without a finished callback.
-        $noop = 1;
-    }
-
-
-    /**
      * Start the database update batch process.
-     * @param $options
-     * @return bool
      */
     public function updateBatch($options)
     {
@@ -403,7 +338,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
                 }
                 // Add this update function to the batch.
                 $function = $update['module'] . '_update_' . $update['number'];
-                $operations[] = ['\Drush\Commands\core\UpdateDBCommands::updateDoOne', [$update['module'], $update['number'], $dependency_map[$function]]];
+                $operations[] = [[$this, 'updateDoOne'], [$update['module'], $update['number'], $dependency_map[$function]]];
             }
         }
 
@@ -423,18 +358,12 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
             if ($post_updates) {
                 if ($operations) {
                     // Only needed if we performed updates earlier.
-                    $operations[] = ['\Drush\Commands\core\UpdateDBCommands::cacheRebuild', []];
+                    $operations[] = [[$this, 'cacheRebuild'], []];
                 }
                 foreach ($post_updates as $function) {
-                    $operations[] = ['\Drush\Commands\core\UpdateDBCommands::updateDoOnePostUpdate', [$function]];
+                    $operations[] = [[$this, 'updateDoOnePostUpdate'], [$function]];
                 }
             }
-        }
-
-        $original_maint_mode = \Drupal::service('state')->get('system.maintenance_mode');
-        if (!$original_maint_mode) {
-            \Drupal::service('state')->set('system.maintenance_mode', true);
-            $operations[] = ['\Drush\Commands\core\UpdateDBCommands::restoreMaintMode', [false]];
         }
 
         $batch['operations'] = $operations;
@@ -442,32 +371,33 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
             'title' => 'Updating',
             'init_message' => 'Starting updates',
             'error_message' => 'An unrecoverable error has occurred. You can find the error message below. It is advised to copy it to the clipboard for reference.',
-            'finished' => '\Drush\Commands\core\UpdateDBCommands::updateFinished',
+            'finished' => [$this, 'updateFinished'],
             'file' => 'core/includes/update.inc',
         ];
         batch_set($batch);
+
+        $maintenance_mode_original_state = \Drupal::service('state')->get('system.maintenance_mode');
+        \Drupal::service('state')->set('system.maintenance_mode', true);
         $result = drush_backend_batch_process('updatedb:batch-process');
+        \Drupal::service('state')->set('system.maintenance_mode', $maintenance_mode_original_state);
 
         $success = false;
         if (!is_array($result)) {
             $this->logger()->error(dt('Batch process did not return a result array. Returned: !type', ['!type' => gettype($result)]));
-        } elseif (!empty($result[0]['#abort'])) {
+        } elseif (!array_key_exists('object', $result)) {
+            $this->logger()->error(dt('Batch process did not return a result object.'));
+        } elseif (!empty($result['object'][0]['#abort'])) {
             // Whenever an error occurs the batch process does not continue, so
             // this array should only contain a single item, but we still output
             // all available data for completeness.
             $this->logger()->error(dt('Update aborted by: !process', [
-                '!process' => implode(', ', $result[0]['#abort']),
+                '!process' => implode(', ', $result['object'][0]['#abort']),
             ]));
         } else {
             $success = true;
         }
 
         return $success;
-    }
-
-    public static function restoreMaintMode($status)
-    {
-        \Drupal::service('state')->set('system.maintenance_mode', $status);
     }
 
     /**
@@ -516,7 +446,7 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
      * @see drush_drupal_cache_clear_all()
      * @see \Drupal\system\Controller\DbUpdateController::triggerBatch()
      */
-    public static function cacheRebuild()
+    public function cacheRebuild()
     {
         drupal_flush_all_caches();
         \Drupal::service('kernel')->rebuildContainer();
@@ -525,6 +455,25 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
         $module_handler = \Drupal::moduleHandler();
         $module_handler->loadAll();
         $module_handler->invokeAll('rebuild');
+    }
+
+    /**
+     * Batch update callback, clears the cache if needed.
+     *
+     * @see \Drupal\system\Controller\DbUpdateController::batchFinished()
+     * @see \Drupal\system\Controller\DbUpdateController::results()
+     *
+     * @param boolean $success Whether the batch ended without a fatal error.
+     * @param array $results
+     * @param array $operations
+     */
+    public function updateFinished($success, $results, $operations)
+    {
+        if (!$this->cache_clear) {
+            $this->logger()->info(dt("Skipping cache-clear operation due to --no-cache-clear option."));
+        } else {
+            drupal_flush_all_caches();
+        }
     }
 
     /**
@@ -628,11 +577,10 @@ class UpdateDBCommands extends DrushCommands implements SiteAliasManagerAwareInt
                 'finished' => [$this, 'updateFinished'],
             ];
             batch_set($batch);
-
-            // See updateFinished() for the restore of maint mode.
-            $this->maintenanceModeOriginalState = \Drupal::service('state')->get('system.maintenance_mode');
+            $maintenance_mode_original_state = \Drupal::service('state')->get('system.maintenance_mode');
             \Drupal::service('state')->set('system.maintenance_mode', true);
             drush_backend_batch_process();
+            \Drupal::service('state')->set('system.maintenance_mode', $maintenance_mode_original_state);
         } else {
             $this->logger()->success(dt("No entity schema updates required"));
         }

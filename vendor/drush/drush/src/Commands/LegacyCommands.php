@@ -1,6 +1,8 @@
 <?php
 namespace Drush\Commands;
 
+use Drush\Drush;
+
 class LegacyCommands extends DrushCommands
 {
 
@@ -54,9 +56,7 @@ class LegacyCommands extends DrushCommands
     }
 
     /**
-     * The pm-updatestatus command was deprecated. Please see `composer show`
-     * and `composer update --dry-run`. For security release notification,
-     * see `drush pm:security`.
+     * The pm-updatestatus command was deprecated. Please see `composer show` and `composer outdated`. For security release notification, see `drush pm:security`.
      *
      * @command pm:updatestatus
      * @aliases ups,pm-updatestatus
@@ -68,9 +68,7 @@ class LegacyCommands extends DrushCommands
     }
 
     /**
-     * The pm-updatecode command was deprecated. Please see
-     * `composer update --dry-run` and `composer update`.
-     * For security release notification, see `drush pm:security`.
+     * The pm-updatecode command was deprecated. Please see `composer outdated` and `composer update`. For security release notification, see `drush pm:security`.
      *
      * @command pm:updatecode
      * @aliases upc,pm-update,pm-updatecode
@@ -118,7 +116,7 @@ class LegacyCommands extends DrushCommands
     }
 
     /**
-     * dl has been deprecated. Please build your site using Composer. Add new projects with composer require drupal/[project-name]. Use https://www.drupal.org/project/composer_generate to build a composer.json which represents the enabled modules on your site.
+     * dl has been deprecated. Please build your site using Composer. Add new projects with composer require drupal/[project-name]. Use https://www.drupal.org/project/composer_generate to build a composer.json which represents the the enabled modules on your site.
      *
      * @command pm:download
      * @aliases dl,pm-download
@@ -126,30 +124,6 @@ class LegacyCommands extends DrushCommands
      * @obsolete
      */
     public function download()
-    {
-    }
-
-    /**
-     * field-create has been deprecated. Please try `generate field` command.
-     *
-     * @command field:create
-     * @aliases field-create
-     * @hidden
-     * @obsolete
-     */
-    public function field()
-    {
-    }
-
-    /**
-     * core:execute has been deprecated. Please try `site:ssh` command.
-     *
-     * @command core:execute
-     * @aliases core-execute
-     * @hidden
-     * @obsolete
-     */
-    public function execute()
     {
     }
 }

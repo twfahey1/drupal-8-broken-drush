@@ -2,19 +2,25 @@
 
 namespace Drush\Boot;
 
+use Drush\Drush;
+use Drush\Log\LogLevel;
+use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
+use League\Container\ContainerAwareInterface;
+use League\Container\ContainerAwareTrait;
 
-abstract class BaseBoot implements Boot, LoggerAwareInterface
+use Symfony\Component\Console\Input\ArgvInput;
+
+abstract class BaseBoot implements Boot, LoggerAwareInterface, ContainerAwareInterface
 {
     use LoggerAwareTrait;
+    use ContainerAwareTrait;
 
-    protected $uri = false;
-    protected $phase = false;
+    protected $uri;
 
     public function __construct()
     {
-        register_shutdown_function([$this, 'terminate']);
     }
 
     public function findUri($root, $uri)
@@ -22,30 +28,9 @@ abstract class BaseBoot implements Boot, LoggerAwareInterface
         return 'default';
     }
 
-    public function getUri()
-    {
-        return $this->uri;
-    }
-
     public function setUri($uri)
     {
         $this->uri = $uri;
-    }
-
-    /**
-     * @return int
-     */
-    public function getPhase()
-    {
-        return $this->phase;
-    }
-
-    /**
-     * @param int $phase
-     */
-    public function setPhase($phase)
-    {
-        $this->phase = $phase;
     }
 
     public function validRoot($path)
@@ -62,7 +47,21 @@ abstract class BaseBoot implements Boot, LoggerAwareInterface
 
     public function reportCommandError($command)
     {
-        // No longer used.
+        // Set errors related to this command.
+        $args = implode(' ', drush_get_arguments());
+        if (isset($command) && is_array($command)) {
+            foreach ($command['bootstrap_errors'] as $key => $error) {
+                drush_set_error($key, $error);
+            }
+            drush_set_error('DRUSH_COMMAND_NOT_EXECUTABLE', dt("The Drush command '!args' could not be executed.", ['!args' => $args]));
+        } elseif (!empty($args)) {
+            drush_set_error('DRUSH_COMMAND_NOT_FOUND', dt("The Drush command '!args' could not be found. Use 'drush core-status' to verify that Drupal is found and bootstrapped successfully. Look for 'Drupal bootstrap : Successful' in its output.", ['!args' => $args]));
+        }
+        // Set errors that occurred in the bootstrap phases.
+        $errors = drush_get_context('DRUSH_BOOTSTRAP_ERRORS', []);
+        foreach ($errors as $code => $message) {
+            drush_set_error($code, $message);
+        }
     }
 
     public function bootstrapPhases()
@@ -110,6 +109,35 @@ abstract class BaseBoot implements Boot, LoggerAwareInterface
             return true;
         } catch (\InvalidArgumentException $e) {
             return false;
+        }
+    }
+
+    protected function inflect($object)
+    {
+        $container = $this->getContainer();
+        if ($object instanceof \Robo\Contract\ConfigAwareInterface) {
+            $object->setConfig($container->get('config'));
+        }
+        if ($object instanceof \Psr\Log\LoggerAwareInterface) {
+            $object->setLogger($container->get('logger'));
+        }
+        if ($object instanceof \League\Container\ContainerAwareInterface) {
+            $object->setContainer($container->get('container'));
+        }
+        if ($object instanceof \Symfony\Component\Console\Input\InputAwareInterface) {
+            $object->setInput($container->get('input'));
+        }
+        if ($object instanceof \Robo\Contract\OutputAwareInterface) {
+            $object->setOutput($container->get('output'));
+        }
+        if ($object instanceof \Robo\Contract\ProgressIndicatorAwareInterface) {
+            $object->setProgressIndicator($container->get('progressIndicator'));
+        }
+        if ($object instanceof \Consolidation\AnnotatedCommand\Events\CustomEventAwareInterface) {
+            $object->setHookManager($container->get('hookManager'));
+        }
+        if ($object instanceof \Robo\Contract\VerbosityThresholdInterface) {
+            $object->setOutputAdapter($container->get('outputAdapter'));
         }
     }
 
