@@ -21,6 +21,32 @@ echo-green () { echo -e "${green}$1${NC}"; }
 echo-green-bg () { echo -e "${green_bg}$1${NC}"; }
 echo-yellow () { echo -e "${yellow}$1${NC}"; }
 
+create_dir()
+{
+	local dest="$1"
+
+	if [[ ! -d $dest ]]; then
+		echo "Making dir ${dest}..."
+		mkdir $source $dest
+	else
+		echo "Dir ${dest} already in place."
+	fi
+}
+
+copy_settings_file()
+{
+	local source="$1"
+	local dest="$2"
+
+	if [[ ! -f $dest ]]; then
+		echo "Copying ${dest}..."
+		cp $source $dest
+	else
+		echo "${dest} already in place."
+	fi
+}
+
+
 #-------------------------- Execution --------------------------------
 
 # Stack initialization
