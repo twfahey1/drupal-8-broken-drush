@@ -5,7 +5,7 @@ use Consolidation\Config\Loader\ConfigLoaderInterface;
 use Drush\Config\Loader\YamlConfigLoader;
 use Consolidation\Config\Loader\ConfigProcessor;
 use Consolidation\Config\Util\EnvConfig;
-use Symfony\Component\Finder\Finder;
+use Webmozart\PathUtil\Path;
 
 /**
  * Locate Drush configuration files and load them into the configuration
@@ -42,6 +42,8 @@ class ConfigLocator
     protected $composerRoot;
 
     protected $configFilePaths = [];
+
+    protected $configFileVariant;
 
     protected $processedConfigPaths = [];
 
@@ -90,8 +92,9 @@ class ConfigLocator
     /**
      * ConfigLocator constructor
      */
-    public function __construct($envPrefix = '')
+    public function __construct($envPrefix = '', $configFileVariant = '')
     {
+        $this->configFileVariant = $configFileVariant;
         $this->config = new DrushConfig();
 
         // Add placeholders to establish priority. We add
@@ -296,13 +299,17 @@ class ConfigLocator
         // Make all of the config values parsed so far available in evaluations.
         $reference = $this->config()->export();
         $processor = new ConfigProcessor();
+        $processor->useMergeStrategyForKeys(['drush.paths.include', 'drush.paths.alias-path']);
         $context = $this->config->getContext($contextName);
         $processor->add($context->export());
 
         $candidates = [
             'drush.yml',
-            'config/drush.yml',
         ];
+        if ($this->configFileVariant) {
+            $candidates[] = "drush{$this->configFileVariant}.yml";
+        }
+        $candidates = $this->expandCandidates($candidates, 'config/');
         $config_files = $this->findConfigFiles($paths, $candidates);
         $this->addConfigFiles($processor, $loader, $config_files);
 
@@ -334,7 +341,7 @@ class ConfigLocator
     {
         foreach ($configFiles as $configFile) {
             $processor->extend($loader->load($configFile));
-            $this->configFilePaths[] = $configFile;
+            $this->configFilePaths[] = Path::canonicalize($configFile);
         }
     }
 
@@ -392,12 +399,18 @@ class ConfigLocator
     {
         // In addition to the paths passed in to us (from --alias-paths
         // commandline options), add some site-local locations.
-        $base_dirs = array_filter(array_merge($this->siteRoots, [$this->composerRoot]));
+        $siteroot_parents = array_map(
+            function ($dir) {
+                return dirname($dir);
+            },
+            $this->siteRoots
+        );
+        $base_dirs = array_filter(array_merge($this->siteRoots, $siteroot_parents, [$this->composerRoot]));
         $site_local_paths = array_map(
             function ($item) {
-                return "$item/drush/sites";
+                return Path::join($item, '/drush/sites');
             },
-            $base_dirs
+            array_unique($base_dirs)
         );
         $paths = array_merge($paths, $site_local_paths);
 
@@ -415,7 +428,7 @@ class ConfigLocator
     {
         $builtin = $this->getBuiltinCommandFilePaths();
         $included = $this->getIncludedCommandFilePaths($commandPaths);
-        $site = $this->getSiteCommandFilePaths(["$root/drush", dirname($root) . '/drush']);
+        $site = $this->getSiteCommandFilePaths($root);
 
         return array_merge(
             $builtin,
@@ -441,12 +454,28 @@ class ConfigLocator
     protected function getIncludedCommandFilePaths($commandPaths)
     {
         $searchpath = [];
+
         // Commands specified by 'include' option
-        foreach ($commandPaths as $commandPath) {
-            if (is_dir($commandPath)) {
-                $searchpath[] = $commandPath;
+        foreach ($commandPaths as $key => $commandPath) {
+            // Check to see if there is a `#` in the include path.
+            // This indicates an include path that has a namespace,
+            // e.g. `namespace#/path`.
+            if (is_numeric($key) && strpos($commandPath, '#') !== false) {
+                list($key, $commandPath) = explode('#', $commandPath, 2);
+            }
+            $sep = ($this->config->isWindows()) ? ';' : ':';
+            foreach (explode($sep, $commandPath) as $path) {
+                if (is_dir($path)) {
+                    if (is_numeric($key)) {
+                        $searchpath[] = $path;
+                    } else {
+                        $key = strtr($key, '-/', '_\\');
+                        $searchpath[$key] = $path;
+                    }
+                }
             }
         }
+
         return $searchpath;
     }
 
@@ -455,29 +484,11 @@ class ConfigLocator
      * 'dirname($root)/drush' directory that contains a composer.json
      * file or a 'Commands' or 'src/Commands' directory.
      */
-    protected function getSiteCommandFilePaths($directories)
+    protected function getSiteCommandFilePaths($root)
     {
-        $result = [];
+        $directories = ["$root/drush", dirname($root) . '/drush', "$root/sites/all/drush"];
 
-        $directories = array_filter($directories, 'is_dir');
-
-        if (empty($directories)) {
-            return $result;
-        }
-
-        // Find projects
-        $finder = new Finder();
-        $finder->files()
-            ->ignoreUnreadableDirs()
-            ->path('#composer.json$|^src/Commands|^Commands#')
-            ->in($directories)
-            ->depth('<= 3');
-
-        foreach ($finder as $file) {
-            $result[] = dirname($file->getRealPath());
-        }
-
-        return $result;
+        return array_filter($directories, 'is_dir');
     }
 
     /**
@@ -488,6 +499,24 @@ class ConfigLocator
     public function setComposerRoot($selectedComposerRoot)
     {
         $this->composerRoot = $selectedComposerRoot;
+
+        // Also export the project directory: the composer root of the
+        // project that contains the selected site.
+        $this->config->getContext(self::ENVIRONMENT_CONTEXT)->set('runtime.project', $this->composerRoot);
+    }
+
+    /**
+     * Double the candidates, adding '$prefix' before each existing one.
+     */
+    public function expandCandidates($candidates, $prefix)
+    {
+        $additional = array_map(
+            function ($item) use ($prefix) {
+                return $prefix . $item;
+            },
+            $candidates
+        );
+        return array_merge($candidates, $additional);
     }
 
     /**
