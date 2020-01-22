@@ -5,7 +5,7 @@
 (https://docksal.io/)
 
 ## Setup with Docksal
-- Run `fin init && fin init-site` to bring the container and IDE online.
+- Run `fin init && fin init-site && fin up` to bring the container and IDE online.
 - Navigate to Coder at http://ide-drupal-8-broken-drush.docksal/
 - Set a breakpoint where desired, and start the debugger.
   - Notable breakpoints:
