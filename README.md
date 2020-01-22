@@ -2,6 +2,7 @@
 
 ## Prereqs
 - Docksal or Lando
+(https://docksal.io/)
 
 ## Setup with Docksal
 - Run `fin init && fin init-site` to bring the container and IDE online.
